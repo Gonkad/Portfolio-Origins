@@ -1,6 +1,10 @@
-import entities.InventoryPage;
-import entities.Player;
-import gearth.encoding.VL64Encoding;
+import entities.Item;
+import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import parsers.OHInventoryItem;
 import gearth.extensions.ExtensionForm;
 import gearth.extensions.ExtensionInfo;
 import gearth.misc.Cacher;
@@ -13,7 +17,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import parsers.OHEntity;
+import ui.InventoryEntry;
 
 import java.io.File;
 import java.net.URISyntaxException;
@@ -23,14 +27,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.ResourceBundle;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @ExtensionInfo(
         Title = "Portfolio",
         Description = "Inventory Portfolio for Habbo Origins",
         Version = "1.0",
-        Author = "Thauan"
+        Author = "Thauan & Rimuru"
 )
 
 public class Portfolio extends ExtensionForm implements Initializable {
@@ -43,6 +45,15 @@ public class Portfolio extends ExtensionForm implements Initializable {
     public static String habboUserName;
     public String roomName;
     public String roomId;
+    public List<Item> inventoryItems = new ArrayList<>();
+    public boolean scanning = false;
+    public int firstItemId = -1;
+    public int pageCount = 0;
+    public int totalItems = 0;
+    public TableView<InventoryEntry> inventoryTableView;
+    public TableColumn<InventoryEntry, String> imageColumn;
+    public TableColumn<InventoryEntry, String> nameColumn;
+    public TableColumn<InventoryEntry, String> quantityColumn;
 
     @Override
     protected void onStartConnection() {
@@ -51,15 +62,45 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
     @Override
     protected void onShow() {
-        new Thread(() -> {
-            sendToServer(new ShockPacketOutgoing("AAnew", roomId));
-            waitAFckingSec(50);
-            sendToServer(new ShockPacketOutgoing("AAnext", roomId));
-        }).start();
+        sendToServer(new ShockPacketOutgoing("AAnew"));
+        scanning = true;
+        new Thread(this::scanInventory).start();
+
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+
+        imageColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
+            private final ImageView imageView = new ImageView();
+            @Override
+            protected void updateItem(String imageUrl, boolean empty) {
+                super.updateItem(imageUrl, empty);
+                if (empty || imageUrl == null) {
+                    setGraphic(null);
+                } else {
+                    Image image = new Image(imageUrl, true); // Enable background loading
+                    imageView.setImage(image);
+                    imageView.setFitHeight(50); // Adjust this value as needed
+                    imageView.setFitWidth(50); // Adjust this value as needed
+                    setGraphic(imageView);
+                }
+            }
+        });
+
+        nameColumn.setCellValueFactory(cellData -> {
+            TableCell<InventoryEntry, String> cell = new TableCell<>();
+            cell.textProperty().bind(Bindings.createStringBinding(() ->
+                    cellData.getValue() != null ? cellData.getValue().getName() : "<no name>"));
+            return cell.textProperty();
+        });
+
+        quantityColumn.setCellValueFactory(cellData -> {
+            TableCell<InventoryEntry, String> cell = new TableCell<>();
+            cell.textProperty().bind(Bindings.createStringBinding(() ->
+                    cellData.getValue() != null ? String.valueOf(cellData.getValue().getQuantity()) : "0"));
+            return cell.textProperty();
+        });
         setupCache();
     }
 
@@ -75,49 +116,29 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
         intercept(HMessage.Direction.TOCLIENT, "USER_OBJ", this::onUserObject);
         intercept(HMessage.Direction.TOCLIENT, "FLATINFO", this::onFlatInfo);
-
-//        BLQB\puHS[2]Xpufridge[2]II#FFFFFF,#FFFFFF[2]_puIS[2][91]pusmall_chair_armas[2]II0,0,0[2]\quJS[2]Xqusmall_chair_armas[2]II0,0,0[2]\ruKS[2]Xrubar_armas[2]IInull[2][93]ruPAS[2]Yrubar_armas[2]IInull[2]^ruQAS[2]Zrufireplace_armas[2]JI#FFFFFF,#FFFFFF,#FFFFFF[2]^suRAS[2]Zsusmall_chair_armas[2]II0,0,0[2]_\nSAS[2][91]\ncarpet_standard*6[2]KQA#777777[2]fNtAPBS[2]bNtAplant_sunflower[2]IInull[2]P[91]
-
-        intercept(HMessage.Direction.TOCLIENT, "FLATINFO", this::onFlatInfo);
         intercept(HMessage.Direction.TOCLIENT, "STRIPINFO_2", this::onInventory);
 
     }
 
     private void onInventory(HMessage hMessage) {
         HPacket hPacket = hMessage.getPacket();
-        InventoryPage[] inventoryPages = InventoryPage.parse(hPacket);
-
-        for(InventoryPage inventoryPage : inventoryPages) {
-            System.out.println(inventoryPage.getFurniName());
-//            System.out.println(inventoryPage.getStuffData());
-//            System.out.println(inventoryPage.getFurniName());
-//            System.out.println(inventoryPage.getInteger1());
-//            System.out.println(inventoryPage.getInteger3());
-//            System.out.println(inventoryPage.getInteger4());
-//            System.out.println(inventoryPage.getItemIdNegative());
+        OHInventoryItem[] inventoryPage = OHInventoryItem.parse(hPacket);
+        if (scanning) {
+            for (OHInventoryItem inventoryItem : inventoryPage) {
+                int scanIndex = inventoryItem.getIndexAtInventory();
+                if (scanIndex == 0 && firstItemId != -1) {
+                    scanning = false;
+                    Platform.runLater(this::populateTable);
+                    break;
+                }
+                updateItemInInventoryList(inventoryItem);
+                totalItems++;
+                if (scanIndex == 0) {
+                    firstItemId = inventoryItem.getFurniId();
+                }
+            }
+            pageCount++;
         }
-    }
-
-    public static String decodeVL64String(String input) {
-        Pattern pattern = Pattern.compile("[^0-9]*");
-        Matcher matcher = pattern.matcher(input);
-        StringBuilder finalString = new StringBuilder();
-        String remainder = "";
-        if (matcher.find()) {
-            remainder = input.substring(matcher.end());
-            input = matcher.group();
-        }
-        while (!input.isEmpty()) {
-            int currentNumber = VL64Encoding.decode(input.getBytes(StandardCharsets.ISO_8859_1));
-            finalString.append(currentNumber).append(" ");
-
-            byte[] encodedPart = VL64Encoding.encode(currentNumber);
-            String part = new String(encodedPart, StandardCharsets.UTF_8);
-            input = input.replaceFirst(part, "");
-        }
-        finalString.append(remainder);
-//        System.out.println(finalString.toString());
-        return finalString.toString();
     }
 
     private void onFlatInfo(HMessage hMessage) {
@@ -152,7 +173,7 @@ public class Portfolio extends ExtensionForm implements Initializable {
     private void loadInventoryCache() {
         JSONObject cache = Cacher.getCacheContents();
 
-        if(cache.has(habboUserName + "Inventory")) {
+        if (cache.has(habboUserName + "Inventory")) {
             JSONArray jsonArray = (JSONArray) Cacher.get(habboUserName + "Inventory");
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject inventoryItem = jsonArray.getJSONObject(i);
@@ -197,4 +218,65 @@ public class Portfolio extends ExtensionForm implements Initializable {
         } catch (InterruptedException ignored) {
         }
     }
+
+    public void scanInventory() {
+        while(scanning) {
+            sendToServer(new ShockPacketOutgoing("AAnext"));
+            waitAFckingSec(50);
+        }
+        System.out.println(inventoryItems.toArray().length);
+    }
+
+    public void populateTable() {
+        ObservableList<InventoryEntry> items = FXCollections.observableArrayList();
+
+        for (Item inventoryItem : inventoryItems) {
+            String imageUrl = getImageUrlForItem(inventoryItem); // Implement this method based on your needs
+            String name = inventoryItem.getName(); // Assuming className is the name you want to display
+            Integer quantity = inventoryItem.getQuantity(); // Assuming you have a method to get quantity
+
+            InventoryEntry entry = new InventoryEntry(imageUrl, name, quantity);
+            items.add(entry);
+        }
+
+        System.out.println("POPULATING TABLE");
+
+        inventoryTableView.setItems(items);
+    }
+
+    public void updateItemInInventoryList(OHInventoryItem hInventoryItem) {
+        boolean itemFound = false;
+
+        String itemNameAndType = hInventoryItem.getClassName() + (Objects.equals(hInventoryItem.getItemType(), "I")
+                ? "_" + hInventoryItem.getProps()
+                : "");
+
+        for (Item item : inventoryItems) {
+            System.out.println(item.getName() + " " + item.getQuantity());
+            if (Objects.equals(item.getName(), itemNameAndType)
+                    && !item.getIds().contains(hInventoryItem.getFurniId())) {
+                item.setQuantity(item.getQuantity() + 1);
+                ArrayList<Integer> newIds = item.getIds();
+                newIds.add(hInventoryItem.getFurniId());
+                item.setIds(newIds);
+                itemFound = true;
+                break;
+            }
+        }
+
+        if (!itemFound) {
+            Item newItem = new Item(itemNameAndType);
+            newItem.setQuantity(1);
+            ArrayList<Integer> newIds = new ArrayList<>();
+            newIds.add(hInventoryItem.getFurniId());
+            newItem.setIds(newIds);
+            inventoryItems.add(newItem);
+        }
+    }
+
+    private String getImageUrlForItem(Item item) {
+        return "http://example.com/" + item.getName() + ".png";
+    }
+
+
 }

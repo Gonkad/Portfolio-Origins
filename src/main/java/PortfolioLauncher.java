@@ -3,8 +3,13 @@ import gearth.extensions.ExtensionFormCreator;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
+import javafx.util.Callback;
+import ui.InventoryEntry;
 
 public class PortfolioLauncher extends ExtensionFormCreator {
 
@@ -25,4 +30,6 @@ public class PortfolioLauncher extends ExtensionFormCreator {
     public static void main(String[] args) {
         runExtensionForm(args, PortfolioLauncher.class);
     }
+
+
 }
