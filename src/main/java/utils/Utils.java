@@ -7,24 +7,26 @@ import org.json.JSONObject;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+
+import java.util.TreeMap;
 
 public class Utils {
-    private static Map<String, String> codeToDomainMap;
-    private static String host;
-    private static JSONArray floorJson;
-    private static JSONArray wallJson;
+    public static TreeMap<Integer, String> typeIdToNameFloor = new TreeMap<>();
+    public static TreeMap<Integer, String> typeIdToNameWall = new TreeMap<>();
+    public static JSONArray wallJson;
+    public static JSONArray floorJson;
 
-    public static void getFurniData() throws Exception {
-        String url = "https://www.habbo%s/gamedata/furnidata_json/1";
-        JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(url, codeToDomainMap.get(host))).openStream(), StandardCharsets.UTF_8));
+    public static void getFurniData() throws Exception{
+        String url = "https://origins.habbo.com/gamedata/furnidata_json/0";
+        JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(url, "", StandardCharsets.UTF_8))));
+
         floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
         floorJson.forEach(o -> {
             JSONObject item = (JSONObject) o;
             try {
                 String itemName = item.get("name").toString();
-               // MarketTools.typeIdToNameFloor.put(item.getInt("id"), itemName);
-            } catch (JSONException ignored) {}
+                typeIdToNameFloor.put(item.getInt("id"), itemName);
+            }catch (JSONException ignored) {}
         });
 
         wallJson = jsonObj.getJSONObject("wallitemtypes").getJSONArray("furnitype");
@@ -32,8 +34,8 @@ public class Utils {
             JSONObject item = (JSONObject) o;
             try {
                 String itemName = item.get("name").toString();
-               // MarketTools.typeIdToNameWall.put(item.getInt("id"), itemName);
-            } catch (JSONException ignored) {}
+                typeIdToNameWall.put(item.getInt("id"), itemName);
+            }catch (JSONException ignored) {}
         });
     }
 }
