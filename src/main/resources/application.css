@@ -5,6 +5,7 @@
 
 .root {
     -fx-font-family: 'VolterGoldfish';
+    -fx-background-image:url
 }
 
 .header-label {
