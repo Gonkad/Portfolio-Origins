@@ -1,12 +1,14 @@
 import entities.Item;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.geometry.Pos;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import gearth.extensions.ExtensionForm;
@@ -19,15 +21,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import parsers.OHInventoryItem;
 import ui.InventoryEntry;
+import utils.Utils;
 
 import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.ResourceBundle;
+import java.util.*;
 
 @ExtensionInfo(
         Title = "Portfolio",
@@ -66,6 +66,7 @@ public class Portfolio extends ExtensionForm implements Initializable {
     public int pageCount = 0;
     public int totalItems = 0;
 
+
     @Override
     protected void onStartConnection() {
         System.out.println("Portfolio started!");
@@ -80,18 +81,20 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+
+
+        imageColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getImageUrl()));
+
         imageColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
             private final ImageView imageView = new ImageView();
             @Override
             protected void updateItem(String imageUrl, boolean empty) {
                 super.updateItem(imageUrl, empty);
+                setAlignment(Pos.CENTER);
                 if (empty || imageUrl == null) {
                     setGraphic(null);
                 } else {
-                    Image image = new Image(imageUrl, true); // Enable background loading
-                    imageView.setImage(image);
-                    imageView.setFitHeight(50); // Adjust this value as needed
-                    imageView.setFitWidth(50); // Adjust this value as needed
+                    imageView.setImage(new Image(imageUrl, true));
                     setGraphic(imageView);
                 }
             }
@@ -102,6 +105,45 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
         quantityColumn.setCellValueFactory(cellData -> Bindings.createStringBinding(() ->
                 cellData.getValue() != null ? String.valueOf(cellData.getValue().getQuantity()) : "0"));
+
+        nameColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null || empty) {
+                    setText(null);
+                } else {
+                    setText(item);
+                }
+                setAlignment(Pos.CENTER);
+            }
+        });
+
+        quantityColumn.setCellValueFactory(cellData -> {
+            TableCell<InventoryEntry, String> cell = new TableCell<>();
+            cell.textProperty().bind(Bindings.createStringBinding(() ->
+                    cellData.getValue() != null ? String.valueOf(cellData.getValue().getQuantity()) : "0"));
+            return cell.textProperty();
+        });
+
+        quantityColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null || empty) {
+                    setText(null);
+                } else {
+                    setText(item);
+                }
+                setAlignment(Pos.CENTER); // Center alignment for the cell content
+            }
+        });
+
+        try {
+            Utils.getFurniData();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         setupCache();
     }
@@ -230,17 +272,17 @@ public class Portfolio extends ExtensionForm implements Initializable {
         ObservableList<InventoryEntry> items = FXCollections.observableArrayList();
 
         for (Item inventoryItem : inventoryItems) {
-            String imageUrl = getImageUrlForItem(inventoryItem); // Implement this method based on your needs
-            String name = inventoryItem.getName(); // Assuming className is the name you want to display
-            Integer quantity = inventoryItem.getQuantity(); // Assuming you have a method to get quantity
+            String imageUrl = getImageUrlForItem(inventoryItem);
+            String name = inventoryItem.getName();
+            Integer quantity = inventoryItem.getQuantity();
 
             InventoryEntry entry = new InventoryEntry(imageUrl, name, quantity);
             items.add(entry);
         }
 
-        System.out.println("POPULATING TABLE");
-
-        inventoryTableView.setItems(items);
+        Platform.runLater(() -> {
+            inventoryTableView.setItems(items);
+        });
     }
 
     public void updateItemInInventoryList(OHInventoryItem hInventoryItem) {
@@ -274,6 +316,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
     }
 
     private String getImageUrlForItem(Item item) {
-        return "http://example.com/" + item.getName() + ".png";
+        return "https://images.habbo.com/dcr/hof_furni/61856/shelves_norja_icon.png";
     }
 }

@@ -1,36 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.*?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane xmlns:fx="http://javafx.com/fxml/1" xmlns:fx="http://javafx.com/javafx/8" fx:controller="Portfolio">
-    <children>
-        <VBox spacing="10" style="-fx-padding: 10;">
-            <HBox spacing="10">
-                <Label text="Room:" styleClass="header-label"/>
-                <Label fx:id="labelRoomName" text="Room Name" styleClass="header-value"/>
-                <Region fx:id="headerSpacer" HBox.hgrow="ALWAYS"/>
-                <Button fx:id="buttonClearList" text="Clear List" onAction="#clearList" styleClass="action-button"/>
-            </HBox>
+<AnchorPane xmlns:fx="http://javafx.com/javafx/1" fx:controller="Portfolio">
+    <VBox spacing="10" style="-fx-padding: 10;">
+        <HBox spacing="10">
+            <Label text="Room:" styleClass="header-label"/>
+            <Label fx:id="labelRoomName" text="Room Name" styleClass="header-value"/>
+            <Region fx:id="headerSpacer" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="buttonClearList" text="Clear List" onAction="#clearList" styleClass="action-button"/>
+        </HBox>
 
-            <TableView fx:id="inventoryTableView" prefHeight="400.0" prefWidth="600.0">
-                <columns>
-                    <TableColumn fx:id="imageColumn" prefWidth="100.0" text="Image"/>
-                    <TableColumn fx:id="nameColumn" prefWidth="250.0" text="Name"/>
-                    <TableColumn fx:id="quantityColumn" prefWidth="100.0" text="Quantity"/>
-                </columns>
-            </TableView>
+        <TableView fx:id="inventoryTableView" prefHeight="400.0" prefWidth="600.0">
+            <columns>
+                <TableColumn fx:id="imageColumn" prefWidth="100.0" text="Image"/>
+                <TableColumn fx:id="nameColumn" prefWidth="250.0" text="Name"/>
+                <TableColumn fx:id="quantityColumn" prefWidth="100.0" text="Quantity"/>
+            </columns>
+        </TableView>
 
-            <HBox spacing="10" alignment="CENTER">
-                <Label text="Player List:"/>
-                <ListView fx:id="playerListView" prefHeight="150.0" prefWidth="200.0"/>
-            </HBox>
+        <HBox spacing="10" alignment="CENTER">
+            <Label text="Player List:"/>
+            <ListView fx:id="playerListView" prefHeight="150.0" prefWidth="200.0"/>
+        </HBox>
 
-            <HBox spacing="10" alignment="CENTER">
-                <Button fx:id="buttonUnban" text="Unban" styleClass="action-button"/>
-                <Label fx:id="labelInfo" text="Info"/>
-            </HBox>
-        </VBox>
-    </children>
+        <HBox spacing="10" alignment="CENTER">
+            <Button fx:id="buttonUnban" text="Unban" styleClass="action-button"/>
+            <Label fx:id="labelInfo" text="Info"/>
+        </HBox>
+    </VBox>
 </AnchorPane>
