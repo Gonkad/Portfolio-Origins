@@ -18,6 +18,7 @@ import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import gearth.protocol.packethandler.shockwave.packets.ShockPacketOutgoing;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import parsers.OHInventoryItem;
 import ui.InventoryEntry;
@@ -28,6 +29,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+
+import static utils.Utils.*;
 
 @ExtensionInfo(
         Title = "Portfolio",
@@ -82,15 +85,14 @@ public class Portfolio extends ExtensionForm implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
 
-
         imageColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getImageUrl()));
 
         imageColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
             private final ImageView imageView = new ImageView();
             @Override
             protected void updateItem(String imageUrl, boolean empty) {
-                super.updateItem(imageUrl, empty);
                 setAlignment(Pos.CENTER);
+                super.updateItem(imageUrl, empty);
                 if (empty || imageUrl == null) {
                     setGraphic(null);
                 } else {
@@ -109,13 +111,13 @@ public class Portfolio extends ExtensionForm implements Initializable {
         nameColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
+                setAlignment(Pos.CENTER);
                 super.updateItem(item, empty);
                 if (item == null || empty) {
                     setText(null);
                 } else {
                     setText(item);
                 }
-                setAlignment(Pos.CENTER);
             }
         });
 
@@ -129,18 +131,19 @@ public class Portfolio extends ExtensionForm implements Initializable {
         quantityColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
+                setAlignment(Pos.CENTER);
                 super.updateItem(item, empty);
                 if (item == null || empty) {
                     setText(null);
                 } else {
                     setText(item);
                 }
-                setAlignment(Pos.CENTER); // Center alignment for the cell content
             }
         });
 
         try {
             Utils.getFurniData();
+            Utils.getExternalTexts();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -265,7 +268,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
             sendToServer(new ShockPacketOutgoing("AAnext"));
             waitAFckingSec(50);
         }
-        System.out.println(inventoryItems.toArray().length);
     }
 
     public void populateTable() {
@@ -273,7 +275,7 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
         for (Item inventoryItem : inventoryItems) {
             String imageUrl = getImageUrlForItem(inventoryItem);
-            String name = inventoryItem.getName();
+            String name = inventoryItem.getLocalizedName() != null ? inventoryItem.getLocalizedName() : inventoryItem.getName();
             Integer quantity = inventoryItem.getQuantity();
 
             InventoryEntry entry = new InventoryEntry(imageUrl, name, quantity);
@@ -288,12 +290,16 @@ public class Portfolio extends ExtensionForm implements Initializable {
     public void updateItemInInventoryList(OHInventoryItem hInventoryItem) {
         boolean itemFound = false;
 
+        boolean isWallItem = Objects.equals(hInventoryItem.getItemType(), "I");
+
         String itemNameAndType = hInventoryItem.getClassName() + (Objects.equals(hInventoryItem.getItemType(), "I")
                 ? "_" + hInventoryItem.getProps()
                 : "");
 
+        String className = hInventoryItem.getClassName();
+
+
         for (Item item : inventoryItems) {
-            System.out.println(item.getName() + " " + item.getQuantity());
             if (Objects.equals(item.getName(), itemNameAndType)
                     && !item.getIds().contains(hInventoryItem.getFurniId())) {
                 item.setQuantity(item.getQuantity() + 1);
@@ -311,11 +317,50 @@ public class Portfolio extends ExtensionForm implements Initializable {
             ArrayList<Integer> newIds = new ArrayList<>();
             newIds.add(hInventoryItem.getFurniId());
             newItem.setIds(newIds);
+
+            if(isWallItem) {
+                    String name = Utils.postersConfig.get(newItem.getName() + "_name");
+                    if(name != null) {
+                        int revision = 56783;
+                        newItem.setRevision(revision);
+                        newItem.setLocalizedName(name);
+                        newItem.setWallItem(true);
+                    }
+            } else {
+                floorJson.forEach(o -> {
+                    JSONObject apiItem = (JSONObject) o;
+                    try {
+                        String itemName = apiItem.get("classname").toString();
+                        if(itemName.equals(className)) {
+                            int revision = apiItem.getInt("revision");
+                            newItem.setRevision(revision);
+                            newItem.setClassName(className);
+                            newItem.setLocalizedName(apiItem.get("name").toString());
+                        }
+                    }catch (JSONException ignored) {}
+                });
+            }
+
             inventoryItems.add(newItem);
+
         }
+
     }
 
     private String getImageUrlForItem(Item item) {
-        return "https://images.habbo.com/dcr/hof_furni/61856/shelves_norja_icon.png";
+        if(item.isWallItem()) {
+
+            System.out.println("https://images.habbo.com/dcr/hof_furni/" + item.getRevision()
+                    + "/" + item.getName().replace("_", "")
+                    + "_icon.png");
+
+                return "https://images.habbo.com/dcr/hof_furni/" + item.getRevision()
+                    + "/" + item.getName().replace("_", "")
+                    + "_icon.png";
+        }
+
+        return "https://images.habbo.com/dcr/hof_furni/" + item.getRevision()
+                + "/" + (item.getClassName() != null ? item.getClassName().replace("*", "_") : item.getName())
+                + "_icon.png";
     }
 }

@@ -1,3 +1,5 @@
+import gearth.extensions.ExtensionForm;
+import gearth.extensions.ExtensionFormCreator;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -7,21 +9,20 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
 
-public class PortfolioLauncher extends Application {
+public class PortfolioLauncher extends ExtensionFormCreator {
 
     @Override
-    public void start(Stage primaryStage) throws Exception {
+    public ExtensionForm createForm(Stage primaryStage) throws Exception {
         // Load the custom font
         Font.loadFont(getClass().getResourceAsStream("/fonts/VolterGoldfish.ttf"), 10);
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/Portfolio.fxml"));
         Parent root = loader.load();
 
-        // Ensure the root is an instance of AnchorPane
         if (root instanceof AnchorPane) {
-            // Set background image
-            Image backgroundImage = new Image(getClass().getResource("/images/background.jpg").toExternalForm());
-            BackgroundImage background = new BackgroundImage(backgroundImage, BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER, BackgroundSize.DEFAULT);
+            Image backgroundImage = new Image("/images/background.png");
+            BackgroundSize backgroundSize = new BackgroundSize(100, 100, true, true, false, true);
+            BackgroundImage background = new BackgroundImage(backgroundImage, BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER, backgroundSize);
             ((AnchorPane) root).setBackground(new Background(background));
         } else {
             System.err.println("Root is not an instance of AnchorPane");
@@ -32,14 +33,15 @@ public class PortfolioLauncher extends Application {
 
         primaryStage.setTitle("Portfolio!");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true);
         primaryStage.setAlwaysOnTop(true);
         primaryStage.getIcons().add(new Image("/icon.png"));
 
-        primaryStage.show();
+        return loader.getController();
+
     }
 
     public static void main(String[] args) {
-        launch(args);
+        runExtensionForm(args, PortfolioLauncher.class);
     }
 }

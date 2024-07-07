@@ -15,9 +15,9 @@
                 <filtering>false</filtering>
                 <directory>src/main/resources</directory>
                 <includes>
-                    <include>**/*.fxml</include>
-                    <include>**/*.png</include>
-                    <include>**/*.css</include>
+                    <include>**/**/*.fxml</include>
+                    <include>**/**/*.png</include>
+                    <include>**/**/*.css</include>
                 </includes>
             </resource>
         </resources>
