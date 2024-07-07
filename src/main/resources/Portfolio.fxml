@@ -10,12 +10,12 @@
 <?import javafx.scene.layout.VBox?>
 
 <AnchorPane minHeight="-Infinity" minWidth="-Infinity" prefHeight="328.0" prefWidth="352.0" stylesheets="@application.css" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Portfolio">
-   <ImageView fitHeight="336.0" fitWidth="352.0" pickOnBounds="true" preserveRatio="true">
+   <ImageView fitHeight="225.0" fitWidth="352.0" layoutY="-7.0" pickOnBounds="true" preserveRatio="true">
       <image>
          <Image url="@images/bg_pattern_clouds.gif" />
       </image>
    </ImageView>
-   <ImageView fitHeight="336.0" fitWidth="352.0" layoutY="116.0" pickOnBounds="true" preserveRatio="true">
+   <ImageView fitHeight="224.0" fitWidth="352.0" layoutY="116.0" pickOnBounds="true" preserveRatio="true">
       <image>
          <Image url="@images/bg_pattern_clouds.gif" />
       </image>
