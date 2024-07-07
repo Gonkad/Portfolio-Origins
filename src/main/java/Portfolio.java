@@ -1,22 +1,23 @@
 import entities.Item;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import parsers.OHInventoryItem;
 import gearth.extensions.ExtensionForm;
 import gearth.extensions.ExtensionInfo;
 import gearth.misc.Cacher;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import gearth.protocol.packethandler.shockwave.packets.ShockPacketOutgoing;
-import javafx.application.Platform;
-import javafx.event.ActionEvent;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import parsers.OHInventoryItem;
 import ui.InventoryEntry;
 
 import java.io.File;
@@ -34,14 +35,28 @@ import java.util.ResourceBundle;
         Version = "1.0",
         Author = "Thauan & Rimuru"
 )
-
 public class Portfolio extends ExtensionForm implements Initializable {
     public static Portfolio RUNNING_INSTANCE;
-    public Button buttonUnban;
-    public ListView<String> playerListView;
-    public Label labelInfo;
-    public Button buttonClearList;
-    public Label labelRoomName;
+
+    @FXML
+    private TableView<InventoryEntry> inventoryTableView;
+    @FXML
+    private TableColumn<InventoryEntry, String> imageColumn;
+    @FXML
+    private TableColumn<InventoryEntry, String> nameColumn;
+    @FXML
+    private TableColumn<InventoryEntry, String> quantityColumn;
+    @FXML
+    private Button buttonUnban;
+    @FXML
+    private Button buttonClearList;
+    @FXML
+    private Label labelInfo;
+    @FXML
+    private ListView<String> playerListView;
+    @FXML
+    private Label labelRoomName;
+
     public static String habboUserName;
     public String roomName;
     public String roomId;
@@ -50,10 +65,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
     public int firstItemId = -1;
     public int pageCount = 0;
     public int totalItems = 0;
-    public TableView<InventoryEntry> inventoryTableView;
-    public TableColumn<InventoryEntry, String> imageColumn;
-    public TableColumn<InventoryEntry, String> nameColumn;
-    public TableColumn<InventoryEntry, String> quantityColumn;
 
     @Override
     protected void onStartConnection() {
@@ -65,12 +76,10 @@ public class Portfolio extends ExtensionForm implements Initializable {
         sendToServer(new ShockPacketOutgoing("AAnew"));
         scanning = true;
         new Thread(this::scanInventory).start();
-
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-
         imageColumn.setCellFactory(column -> new TableCell<InventoryEntry, String>() {
             private final ImageView imageView = new ImageView();
             @Override
@@ -88,19 +97,12 @@ public class Portfolio extends ExtensionForm implements Initializable {
             }
         });
 
-        nameColumn.setCellValueFactory(cellData -> {
-            TableCell<InventoryEntry, String> cell = new TableCell<>();
-            cell.textProperty().bind(Bindings.createStringBinding(() ->
-                    cellData.getValue() != null ? cellData.getValue().getName() : "<no name>"));
-            return cell.textProperty();
-        });
+        nameColumn.setCellValueFactory(cellData -> Bindings.createStringBinding(() ->
+                cellData.getValue() != null ? cellData.getValue().getName() : "<no name>"));
 
-        quantityColumn.setCellValueFactory(cellData -> {
-            TableCell<InventoryEntry, String> cell = new TableCell<>();
-            cell.textProperty().bind(Bindings.createStringBinding(() ->
-                    cellData.getValue() != null ? String.valueOf(cellData.getValue().getQuantity()) : "0"));
-            return cell.textProperty();
-        });
+        quantityColumn.setCellValueFactory(cellData -> Bindings.createStringBinding(() ->
+                cellData.getValue() != null ? String.valueOf(cellData.getValue().getQuantity()) : "0"));
+
         setupCache();
     }
 
@@ -117,7 +119,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
         intercept(HMessage.Direction.TOCLIENT, "USER_OBJ", this::onUserObject);
         intercept(HMessage.Direction.TOCLIENT, "FLATINFO", this::onFlatInfo);
         intercept(HMessage.Direction.TOCLIENT, "STRIPINFO_2", this::onInventory);
-
     }
 
     private void onInventory(HMessage hMessage) {
@@ -177,7 +178,7 @@ public class Portfolio extends ExtensionForm implements Initializable {
             JSONArray jsonArray = (JSONArray) Cacher.get(habboUserName + "Inventory");
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject inventoryItem = jsonArray.getJSONObject(i);
-
+                // Handle the inventory item as necessary
             }
         }
     }
@@ -207,9 +208,7 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
     public void clearList(ActionEvent actionEvent) {
         Cacher.put(roomId, new JSONArray());
-        Platform.runLater(() -> {
-            playerListView.getItems().clear();
-        });
+        Platform.runLater(() -> playerListView.getItems().clear());
     }
 
     public static void waitAFckingSec(int millisecActually) {
@@ -220,7 +219,7 @@ public class Portfolio extends ExtensionForm implements Initializable {
     }
 
     public void scanInventory() {
-        while(scanning) {
+        while (scanning) {
             sendToServer(new ShockPacketOutgoing("AAnext"));
             waitAFckingSec(50);
         }
@@ -277,6 +276,4 @@ public class Portfolio extends ExtensionForm implements Initializable {
     private String getImageUrlForItem(Item item) {
         return "http://example.com/" + item.getName() + ".png";
     }
-
-
 }
