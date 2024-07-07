@@ -4,7 +4,7 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane xmlns:fx="http://javafx.com/fxml/1" xmlns:fx="http://javafx.com/javafx/8" fx:controller="Portfolio">
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" fx:controller="Portfolio">
     <children>
         <VBox spacing="10" style="-fx-padding: 10;">
             <HBox spacing="10">
