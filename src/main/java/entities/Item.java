@@ -8,8 +8,8 @@ public class Item {
     private int quantity;
     private ArrayList<Integer> ids;
     private int revision;
-    private String className;
-    private String localizedName;
+    private String className = "";
+    private String localizedName = "";
     private boolean isWallItem = false;
 
     public Item(String name) {

@@ -1,11 +1,14 @@
 @font-face {
     font-family: 'VolterGoldfish';
-    src: url('fonts/VolterGoldfish.ttf');
+    src: url('/fonts/VolterGoldfish.ttf');
 }
 
-.root {
+.label {
     -fx-font-family: 'VolterGoldfish';
-    -fx-background-image:url
+}
+
+.root, .header-label, .header-value, .action-button, .table-column-header {
+    font-family: 'VolterGoldfish';
 }
 
 .header-label {

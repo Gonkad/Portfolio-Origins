@@ -13,12 +13,16 @@ public class PortfolioLauncher extends ExtensionFormCreator {
 
     @Override
     public ExtensionForm createForm(Stage primaryStage) throws Exception {
-        // Load the custom font
-        Font.loadFont(getClass().getResourceAsStream("/fonts/VolterGoldfish.ttf"), 10);
-
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/Portfolio.fxml"));
         Parent root = loader.load();
+        root.getStyleClass().add("root");
 
+        try {
+            Font.loadFont(getClass().getResourceAsStream("/fonts/VolterGoldfish.ttf"), 12);
+            System.out.println("Font loaded successfully.");
+        } catch (Exception e) {
+            System.err.println("Failed to load font: " + e.getMessage());
+        }
         if (root instanceof AnchorPane) {
             Image backgroundImage = new Image("/images/background.png");
             BackgroundSize backgroundSize = new BackgroundSize(100, 100, true, true, false, true);

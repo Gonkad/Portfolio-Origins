@@ -40,6 +40,10 @@ import static utils.Utils.*;
 )
 public class Portfolio extends ExtensionForm implements Initializable {
     public static Portfolio RUNNING_INSTANCE;
+    public Label totalUniqueItemsLabel;
+    public Label totalItemsLabel;
+    public Label usernameLabel;
+    public Button scanButton;
 
     @FXML
     private TableView<InventoryEntry> inventoryTableView;
@@ -49,16 +53,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
     private TableColumn<InventoryEntry, String> nameColumn;
     @FXML
     private TableColumn<InventoryEntry, String> quantityColumn;
-    @FXML
-    private Button buttonUnban;
-    @FXML
-    private Button buttonClearList;
-    @FXML
-    private Label labelInfo;
-    @FXML
-    private ListView<String> playerListView;
-    @FXML
-    private Label labelRoomName;
 
     public static String habboUserName;
     public String roomName;
@@ -68,6 +62,8 @@ public class Portfolio extends ExtensionForm implements Initializable {
     public int firstItemId = -1;
     public int pageCount = 0;
     public int totalItems = 0;
+    public int totalUniqueItems = 0;
+    public Thread scanThread;
 
 
     @Override
@@ -77,9 +73,10 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
     @Override
     protected void onShow() {
-        sendToServer(new ShockPacketOutgoing("AAnew"));
-        scanning = true;
-        new Thread(this::scanInventory).start();
+        Platform.runLater(() -> {
+            usernameLabel.setText(habboUserName);
+        });
+        scan();
     }
 
     @Override
@@ -159,21 +156,54 @@ public class Portfolio extends ExtensionForm implements Initializable {
             if (!Objects.equals(versionClient, "SHOCKWAVE")) {
                 System.exit(0);
             }
+
+            new Thread(() -> {
+                sendToServer(new ShockPacketOutgoing("{out:INFORETRIEVE}"));
+            }).start();
         });
 
         intercept(HMessage.Direction.TOCLIENT, "USER_OBJ", this::onUserObject);
         intercept(HMessage.Direction.TOCLIENT, "FLATINFO", this::onFlatInfo);
         intercept(HMessage.Direction.TOCLIENT, "STRIPINFO_2", this::onInventory);
+        intercept(HMessage.Direction.TOSERVER, "GETSTRIP", this::onPage);
+
+    }
+
+
+    void onUserObject(HMessage hMessage) {
+        HPacket hPacket = hMessage.getPacket();
+        final byte[] dataRemainder = hPacket.readBytes(hPacket.length() - hPacket.getReadIndex());
+        final String data = new String(dataRemainder, StandardCharsets.ISO_8859_1);
+
+        String[] pairs = data.split("\r");
+
+        String nameValue = null;
+
+        for (String pair : pairs) {
+            String[] keyValue = pair.split("=");
+            if (keyValue.length == 2 && keyValue[0].equals("name")) {
+                nameValue = keyValue[1];
+                break;
+            }
+        }
+
+        habboUserName = nameValue;
+    }
+
+    private void onPage(HMessage hMessage) {
+        if(scanning) {
+            hMessage.setBlocked(true);
+        }
     }
 
     private void onInventory(HMessage hMessage) {
         HPacket hPacket = hMessage.getPacket();
         OHInventoryItem[] inventoryPage = OHInventoryItem.parse(hPacket);
         if (scanning) {
+            hMessage.setBlocked(true);
             for (OHInventoryItem inventoryItem : inventoryPage) {
                 int scanIndex = inventoryItem.getIndexAtInventory();
                 if (scanIndex == 0 && firstItemId != -1) {
-                    scanning = false;
                     Platform.runLater(this::populateTable);
                     break;
                 }
@@ -194,26 +224,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
         hPacket.readString();
         roomName = hPacket.readString();
         String sanitizedRoomId = roomId.replaceAll("[^a-zA-Z]", "");
-    }
-
-    private void onUserObject(HMessage hMessage) {
-        HPacket hPacket = hMessage.getPacket();
-        final byte[] dataRemainder = hPacket.readBytes(hPacket.length() - hPacket.getReadIndex());
-        final String data = new String(dataRemainder, StandardCharsets.ISO_8859_1);
-
-        String[] pairs = data.split("\r");
-
-        String nameValue = null;
-
-        for (String pair : pairs) {
-            String[] keyValue = pair.split("=");
-            if (keyValue.length == 2 && keyValue[0].equals("name")) {
-                nameValue = keyValue[1];
-                break;
-            }
-        }
-
-        habboUserName = nameValue;
     }
 
     private void loadInventoryCache() {
@@ -241,20 +251,20 @@ public class Portfolio extends ExtensionForm implements Initializable {
         Cacher.setCacheDir(extDir + File.separator + "Cache");
     }
 
-    public void updateInventoryCache() {
-        JSONArray jsonInventory = new JSONArray();
-        for (String name : playerListView.getItems()) {
-            JSONObject jsonPlayer = new JSONObject();
-            jsonPlayer.put("name", name);
-            jsonInventory.put(jsonPlayer);
-        }
-        Cacher.put(roomId, jsonInventory);
-    }
-
-    public void clearList(ActionEvent actionEvent) {
-        Cacher.put(roomId, new JSONArray());
-        Platform.runLater(() -> playerListView.getItems().clear());
-    }
+//    public void updateInventoryCache() {
+//        JSONArray jsonInventory = new JSONArray();
+//        for (String name : playerListView.getItems()) {
+//            JSONObject jsonPlayer = new JSONObject();
+//            jsonPlayer.put("name", name);
+//            jsonInventory.put(jsonPlayer);
+//        }
+//        Cacher.put(roomId, jsonInventory);
+//    }
+//
+//    public void clearList(ActionEvent actionEvent) {
+//        Cacher.put(roomId, new JSONArray());
+//        Platform.runLater(() -> playerListView.getItems().clear());
+//    }
 
     public static void waitAFckingSec(int millisecActually) {
         try {
@@ -275,16 +285,22 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
         for (Item inventoryItem : inventoryItems) {
             String imageUrl = getImageUrlForItem(inventoryItem);
-            String name = inventoryItem.getLocalizedName() != null ? inventoryItem.getLocalizedName() : inventoryItem.getName();
+            String name = !Objects.equals(inventoryItem.getLocalizedName(), "null") ? inventoryItem.getLocalizedName()
+                    : (!Objects.equals(inventoryItem.getName(), "null") ? inventoryItem.getName() : inventoryItem.getClassName());
             Integer quantity = inventoryItem.getQuantity();
 
             InventoryEntry entry = new InventoryEntry(imageUrl, name, quantity);
             items.add(entry);
         }
 
+
         Platform.runLater(() -> {
             inventoryTableView.setItems(items);
+            totalItemsLabel.setText(String.valueOf(totalItems));
+            totalUniqueItemsLabel.setText(String.valueOf(totalUniqueItems));
         });
+        scanning = false;
+        scanButton.setDisable(false);
     }
 
     public void updateItemInInventoryList(OHInventoryItem hInventoryItem) {
@@ -292,12 +308,12 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
         boolean isWallItem = Objects.equals(hInventoryItem.getItemType(), "I");
 
+
         String itemNameAndType = hInventoryItem.getClassName() + (Objects.equals(hInventoryItem.getItemType(), "I")
                 ? "_" + hInventoryItem.getProps()
                 : "");
 
         String className = hInventoryItem.getClassName();
-
 
         for (Item item : inventoryItems) {
             if (Objects.equals(item.getName(), itemNameAndType)
@@ -317,7 +333,8 @@ public class Portfolio extends ExtensionForm implements Initializable {
             ArrayList<Integer> newIds = new ArrayList<>();
             newIds.add(hInventoryItem.getFurniId());
             newItem.setIds(newIds);
-
+            newItem.setClassName(className);
+            totalUniqueItems++;
             if(isWallItem) {
                     String name = Utils.postersConfig.get(newItem.getName() + "_name");
                     if(name != null) {
@@ -325,6 +342,8 @@ public class Portfolio extends ExtensionForm implements Initializable {
                         newItem.setRevision(revision);
                         newItem.setLocalizedName(name);
                         newItem.setWallItem(true);
+                    }else {
+                        newItem.setLocalizedName(itemNameAndType);
                     }
             } else {
                 floorJson.forEach(o -> {
@@ -333,9 +352,12 @@ public class Portfolio extends ExtensionForm implements Initializable {
                         String itemName = apiItem.get("classname").toString();
                         if(itemName.equals(className)) {
                             int revision = apiItem.getInt("revision");
-                            newItem.setRevision(revision);
-                            newItem.setClassName(className);
-                            newItem.setLocalizedName(apiItem.get("name").toString());
+                            if(revision != 0) {
+                                newItem.setRevision(revision);
+                                newItem.setLocalizedName(apiItem.get("name").toString());
+                            }else {
+                                newItem.setLocalizedName(newItem.getClassName());
+                            }
                         }
                     }catch (JSONException ignored) {}
                 });
@@ -349,11 +371,6 @@ public class Portfolio extends ExtensionForm implements Initializable {
 
     private String getImageUrlForItem(Item item) {
         if(item.isWallItem()) {
-
-            System.out.println("https://images.habbo.com/dcr/hof_furni/" + item.getRevision()
-                    + "/" + item.getName().replace("_", "")
-                    + "_icon.png");
-
                 return "https://images.habbo.com/dcr/hof_furni/" + item.getRevision()
                     + "/" + item.getName().replace("_", "")
                     + "_icon.png";
@@ -362,5 +379,27 @@ public class Portfolio extends ExtensionForm implements Initializable {
         return "https://images.habbo.com/dcr/hof_furni/" + item.getRevision()
                 + "/" + (item.getClassName() != null ? item.getClassName().replace("*", "_") : item.getName())
                 + "_icon.png";
+    }
+
+    public void scan() {
+        if(!scanning) {
+            if(scanThread != null) {
+                scanThread.interrupt();
+            }
+            inventoryItems.clear();
+            scanButton.setDisable(true);
+            totalItems = 0;
+            totalUniqueItems = 0;
+            firstItemId = -1;
+            Platform.runLater(() -> {
+                inventoryTableView.getItems().clear();
+                totalItemsLabel.setText("0");
+                totalUniqueItemsLabel.setText(String.valueOf("0"));
+            });
+            sendToServer(new ShockPacketOutgoing("AAnew"));
+            scanning = true;
+            scanThread = new Thread(this::scanInventory);
+            scanThread.start();
+        }
     }
 }

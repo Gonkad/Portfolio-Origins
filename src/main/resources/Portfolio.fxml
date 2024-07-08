@@ -23,10 +23,10 @@
         </children>
     </VBox>
     <Label layoutX="14.0" layoutY="31.0" text="Username:" />
-    <Label layoutX="94.0" layoutY="31.0" text="Username" />
+    <Label fx:id="usernameLabel" layoutX="94.0" layoutY="31.0" text="Username" />
     <Label layoutX="17.0" layoutY="273.0" prefHeight="17.0" prefWidth="114.0" text="Total Unique Items:" />
     <Label layoutX="18.0" layoutY="300.0" text="Total Items:" />
-    <Label layoutX="148.0" layoutY="273.0" text="NrTotalUniqueItems" />
-    <Label layoutX="105.0" layoutY="300.0" text="NrTotalItems" />
-    <Button layoutX="278.0" layoutY="281.0" mnemonicParsing="false" prefHeight="28.0" prefWidth="54.0" text="Scan" />
+    <Label fx:id="totalUniqueItemsLabel" layoutX="148.0" layoutY="273.0" text="0" />
+    <Label fx:id="totalItemsLabel" layoutX="105.0" layoutY="300.0" text="0" />
+    <Button onAction="#scan" fx:id="scanButton" layoutX="278.0" layoutY="281.0" mnemonicParsing="false" prefHeight="28.0" prefWidth="54.0" text="Scan" />
 </AnchorPane>
